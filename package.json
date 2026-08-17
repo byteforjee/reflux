@@ -1,26 +1,36 @@
 {
-  "name": "reflux-temp",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "next": "16.3.1",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.1",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "name": "reflux",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint"
+    },
+    "dependencies": {
+        "@google/generative-ai": "^0.24.1",
+        "@prisma/adapter-pg": "^7.9.1",
+        "@tanstack/react-query": "^5.101.4",
+        "connectkit": "^1.9.2",
+        "next": "16.3.1",
+        "pg": "^8.23.0",
+        "react": "19.2.8",
+        "react-dom": "19.2.8",
+        "viem": "^2.55.16",
+        "wagmi": "^3.7.6"
+    },
+    "devDependencies": {
+        "@prisma/client": "^7.9.1",
+        "@tailwindcss/postcss": "^4",
+        "@types/node": "^20",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "dotenv": "^17.4.2",
+        "eslint": "^9",
+        "eslint-config-next": "16.3.1",
+        "prisma": "^7.9.1",
+        "tailwindcss": "^4",
+        "typescript": "^5"
+    }
 }

@@ -1,26 +1,181 @@
 @import "tailwindcss";
 
+/* ─── Reflux brand tokens ─────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Color tokens */
+  --accent-mint: #98ffe8;
+  --accent-teal: #1f8f84;
+  --surface-dark: #121517;
+  --surface-card: #161a1d;
+  --surface-light: #f2fbf9;
+  --text-slate: #5b6479;
+  --border-bone: #e3e0d6;
+
+  /* Gradient tokens */
+  --gradient-depth: linear-gradient(135deg, #121517 0%, #1f8f84 100%);
+  --gradient-surge: linear-gradient(90deg, #1f8f84 0%, #98ffe8 100%);
+  --gradient-signal: linear-gradient(135deg, #121517 0%, #98ffe8 100%);
+  --gradient-mist: linear-gradient(90deg, #98ffe8 0%, #f2fbf9 100%);
+  --gradient-current: linear-gradient(180deg, #0b2028 0%, #1f8f84 100%);
 }
 
+/* ─── Tailwind v4 theme extension ────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Colors */
+  --color-accent-mint: var(--accent-mint);
+  --color-accent-teal: var(--accent-teal);
+  --color-surface-dark: var(--surface-dark);
+  --color-surface-card: var(--surface-card);
+  --color-surface-light: var(--surface-light);
+  --color-text-slate: var(--text-slate);
+  --color-border-bone: var(--border-bone);
+
+  /* Gradients as background-image utilities */
+  --background-image-gradient-depth: var(--gradient-depth);
+  --background-image-gradient-surge: var(--gradient-surge);
+  --background-image-gradient-signal: var(--gradient-signal);
+  --background-image-gradient-mist: var(--gradient-mist);
+  --background-image-gradient-current: var(--gradient-current);
+
+  /* Font families */
+  --font-display: var(--font-display), "Inter", -apple-system, Helvetica, Arial, sans-serif;
+  --font-body: var(--font-body), -apple-system, Helvetica, Arial, sans-serif;
+
+  /* Border radius aliases */
+  --radius-ui: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ─── Base styles ────────────────────────────────────────────── */
+body {
+  background-color: var(--surface-dark);
+  color: var(--surface-light);
+  font-family: var(--font-body), -apple-system, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  line-height: 1.6;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Ensure all heading levels default to Space Grotesk Bold */
+h1, h2 {
+  font-family: var(--font-display), -apple-system, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h3, h4, h5, h6 {
+  font-family: var(--font-body), -apple-system, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+}
+
+/* ─── Animated Background Effects & Grid System ────────────────── */
+.bg-grid-pattern {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(227, 224, 214, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(227, 224, 214, 0.03) 1px, transparent 1px);
+}
+
+.reflux-glow-orb-1 {
+  position: fixed;
+  top: -10%;
+  left: -10%;
+  width: 55vw;
+  height: 55vw;
+  max-width: 700px;
+  max-height: 700px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(152, 255, 232, 0.12) 0%, rgba(31, 143, 132, 0.05) 50%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  animation: floatOrb1 25s ease-in-out infinite alternate;
+}
+
+.reflux-glow-orb-2 {
+  position: fixed;
+  bottom: -15%;
+  right: -10%;
+  width: 60vw;
+  height: 60vw;
+  max-width: 800px;
+  max-height: 800px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(31, 143, 132, 0.18) 0%, rgba(11, 32, 40, 0.08) 50%, transparent 70%);
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+  animation: floatOrb2 30s ease-in-out infinite alternate;
+}
+
+.reflux-glow-orb-3 {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 45vw;
+  height: 45vw;
+  max-width: 600px;
+  max-height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(152, 255, 232, 0.06) 0%, transparent 65%);
+  filter: blur(90px);
+  pointer-events: none;
+  z-index: 0;
+  animation: floatOrb3 20s ease-in-out infinite alternate;
+}
+
+/* Keyframes for smooth ambient movement */
+@keyframes floatOrb1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 80px) scale(1.15); }
+  100% { transform: translate(-30px, 40px) scale(0.95); }
+}
+
+@keyframes floatOrb2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-80px, -60px) scale(1.2); }
+  100% { transform: translate(40px, -40px) scale(0.9); }
+}
+
+@keyframes floatOrb3 {
+  0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.5; }
+  50% { transform: translate(-45%, -55%) scale(1.1); opacity: 0.8; }
+  100% { transform: translate(-55%, -45%) scale(1); opacity: 0.5; }
+}
+
+/* ─── Hero petal animation ───────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .reflux-petal-rotate {
+    animation: petalSpin 75s linear infinite;
+  }
+  .reflux-gradient-drift {
+    animation: gradientDrift 75s ease-in-out infinite;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes petalSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes gradientDrift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ─── Hide Next.js Dev Overlay Indicator Completely ───────────── */
+nextjs-portal,
+#nextjs-dev-overlay,
+[data-next-badge],
+[data-nextjs-toast-errors-parent] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }

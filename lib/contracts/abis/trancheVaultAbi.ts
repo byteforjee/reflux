@@ -1,0 +1,166 @@
+export const trancheVaultAbi = [
+  {
+    inputs: [
+      { internalType: "address", name: "initialOwner", type: "address" },
+      { internalType: "address", name: "_fundingToken", type: "address" },
+      { internalType: "address", name: "_registry", type: "address" },
+      { internalType: "address", name: "_riskOracle", type: "address" },
+    ],
+    stateMutability: "nonpayable",
+    type: "constructor",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "assetId", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "targetAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "aprBps", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "fundingDeadline", type: "uint256" },
+    ],
+    name: "ListingCreated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "assetId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "investor", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "InvestmentMade",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "assetId", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "raisedAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "targetAmount", type: "uint256" },
+    ],
+    name: "ListingExpiredUnfunded",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "assetId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "investor", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "RefundClaimed",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "assetId", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "repaymentAmount", type: "uint256" },
+    ],
+    name: "RepaymentReceived",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "assetId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "investor", type: "address" },
+      { indexed: false, internalType: "uint256", name: "payout", type: "uint256" },
+    ],
+    name: "PayoutClaimed",
+    type: "event",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "assetId", type: "uint256" }],
+    name: "createListing",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "assetId", type: "uint256" },
+      { internalType: "uint256", name: "fundingDeadline", type: "uint256" },
+    ],
+    name: "createListingWithDeadline",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "assetId", type: "uint256" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "invest",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "assetId", type: "uint256" }],
+    name: "checkAndExpireListing",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "assetId", type: "uint256" }],
+    name: "claimRefund",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "assetId", type: "uint256" },
+      { internalType: "uint256", name: "repaymentAmount", type: "uint256" },
+    ],
+    name: "simulateRepayment",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "assetId", type: "uint256" }],
+    name: "claimPayout",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "assetId", type: "uint256" }],
+    name: "getListing",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "assetId", type: "uint256" },
+          { internalType: "uint256", name: "targetAmount", type: "uint256" },
+          { internalType: "uint256", name: "raisedAmount", type: "uint256" },
+          { internalType: "uint256", name: "aprBps", type: "uint256" },
+          { internalType: "uint256", name: "listedAt", type: "uint256" },
+          { internalType: "uint256", name: "dueDateTimestamp", type: "uint256" },
+          { internalType: "uint256", name: "fundingDeadline", type: "uint256" },
+          { internalType: "bool", name: "repaid", type: "bool" },
+          { internalType: "bool", name: "defaulted", type: "bool" },
+          { internalType: "bool", name: "expiredUnfunded", type: "bool" },
+          { internalType: "uint256", name: "repaymentAmount", type: "uint256" },
+        ],
+        internalType: "struct TrancheVault.Listing",
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "assetId", type: "uint256" },
+      { internalType: "address", name: "investor", type: "address" },
+    ],
+    name: "getPosition",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;

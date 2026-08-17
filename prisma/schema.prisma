@@ -1,0 +1,110 @@
+// Prisma schema for Reflux
+// Docs: https://pris.ly/d/prisma-schema
+//
+// Storage model (architecture.md):
+// - This database is a STAGING and CACHE layer only.
+// - Onchain state (X Layer) is always the source of truth for money,
+//   ownership, scores, and repayment status.
+// - Raw invoice documents are stored in IPFS only — never here.
+// - Only the IPFS CID and document hash are stored here as references.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Connection URL is configured in prisma.config.ts (Prisma v7+)
+  // DATABASE_URL is read from the environment there via dotenv/config.
+}
+
+/// Staging record created when a business submits an invoice.
+/// This record exists before the onchain AssetRegistry write succeeds.
+/// Status must always be one of the 8 valid values from architecture.md invariant 4:
+/// submitted | scoring | listed | funded | repaid | defaulted | rejected | flagged
+model InvoiceSubmission {
+  id             String   @id @default(cuid())
+
+  /// Wallet address of the submitting business
+  walletAddress  String
+
+  /// Invoice amount in the invoice's stated currency (stored as Decimal for precision)
+  amount         Decimal
+
+  /// ISO 8601 date string for the invoice due date (e.g. "2025-12-31")
+  dueDateIso     String
+
+  /// Name of the debtor company that owes the invoice
+  debtorName     String
+
+  /// IPFS CID of the uploaded invoice document. Null until IPFS upload succeeds.
+  /// The raw document binary is never stored here — only this reference.
+  ipfsCid        String?
+
+  /// SHA-256 hash of the invoice document, mirroring what is written onchain
+  /// to AssetRegistry. Null until the document is hashed.
+  documentHash   String?
+
+  /// Current status of this submission.
+  /// One of: submitted | scoring | listed | funded | repaid | defaulted | rejected | flagged
+  status         String   @default("submitted")
+
+  /// Cached AI rationale text for fast reads without a chain call.
+  /// Source of truth for the score is always the RiskOracle contract onchain.
+  aiRationale    String?
+
+  /// AI-assigned risk tier: A | B | C. Null until scoring completes.
+  aiTier         String?
+
+  /// AI-assigned APR as a decimal string (e.g. "0.12" for 12%). Null until scoring.
+  aiApr          String?
+
+  /// AI decision: approved | rejected | flagged. Null until scoring completes.
+  aiDecision     String?
+
+  /// onchain asset ID written to AssetRegistry. Null until the onchain write succeeds.
+  onchainAssetId String?
+
+  /// Amount funded by investors in funding-token units (USDC)
+  fundedAmount   Decimal  @default(0)
+
+  /// Reason for cancellation if cancelled by issuer
+  cancellationReason String?
+
+  /// Timestamp when the listing was cancelled
+  cancelledAt    DateTime?
+
+  /// Number of times this facility has been resubmitted after rejection
+  resubmissionCount Int   @default(0)
+
+  /// ID of the prior submission if this is a resubmission
+  parentSubmissionId String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([walletAddress])
+  @@index([status])
+  @@index([parentSubmissionId])
+}
+
+/// Tracks submitter wallet trust tier, cancellation frequency, and anti-reroll flags.
+model WalletTrustProfile {
+  /// Submitter wallet address (lowercased)
+  walletAddress      String   @id
+
+  /// Count of cancelled listings for this wallet
+  cancellationCount  Int      @default(0)
+
+  /// Flagged for manual review if cancel-and-resubmit frequency is excessive (>= 2)
+  isFlaggedForReview Boolean  @default(false)
+
+  /// Trust tier determining maximum origination cap
+  trustTier          String   @default("TIER_1")
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([isFlaggedForReview])
+}
