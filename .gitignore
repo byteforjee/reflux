@@ -55,3 +55,4 @@ scratch_deploy.mjs
 /context-file
 *.pdf
 reflux-brand-assets/
+*.md 
