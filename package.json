@@ -33,5 +33,15 @@
         "prisma": "^7.9.1",
         "tailwindcss": "^4",
         "typescript": "^5"
+    },
+    "overrides": {
+        "@aave/account": {
+            "react": "$react",
+            "react-dom": "$react-dom"
+        },
+        "connectkit": {
+            "react": "$react",
+            "react-dom": "$react-dom"
+        }
     }
 }
