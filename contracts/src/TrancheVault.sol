@@ -94,7 +94,7 @@ contract TrancheVault is Ownable, ReentrancyGuard {
     // ─── Modifiers ────────────────────────────────────────────────────────────
 
     modifier onlyAdmin() {
-        if (msg.sender != admin) revert NotAdmin();
+        if (msg.sender != admin && msg.sender != owner()) revert NotAdmin();
         _;
     }
 

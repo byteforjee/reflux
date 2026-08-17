@@ -10,7 +10,7 @@ export const CONTRACT_ADDRESSES = {
   xlayerTestnet: {
     assetRegistry: "0xaf248c5474f40945ed41664125350a890782cad0",
     riskOracle: "0x37e1Bf4Ac7e80507c22f6710B205b696068F1127",
-    trancheVault: "0x56deb48168bdfe8a396db8780d239913279ed4f2",
+    trancheVault: "0x452857e278fe68376e264662ff944cc88cf65fb7",
     mockUsdc: "0xD84509d311700d7946439E66DD6573138d79bBCb",
   },
   xlayerMainnet: {
