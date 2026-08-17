@@ -1,22 +1,21 @@
-import localFont from "next/font/local";
+import { Space_Grotesk, Inter } from "next/font/google";
 
-export const spaceGroteskBold = localFont({
-  src: "../reflux-brand-assets/typography/fonts/SpaceGrotesk-Bold.ttf",
+export const spaceGroteskBold = Space_Grotesk({
   variable: "--font-display",
   weight: "700",
+  subsets: ["latin"],
   display: "swap",
 });
 
-export const spaceGroteskRegular = localFont({
-  src: "../reflux-brand-assets/typography/fonts/SpaceGrotesk-Regular.ttf",
+export const spaceGroteskRegular = Space_Grotesk({
   variable: "--font-display-regular",
   weight: "400",
+  subsets: ["latin"],
   display: "swap",
 });
 
-export const inter = localFont({
-  src: "../reflux-brand-assets/typography/fonts/Inter-Regular.ttf",
+export const inter = Inter({
   variable: "--font-body",
-  weight: "100 900",
+  subsets: ["latin"],
   display: "swap",
 });
