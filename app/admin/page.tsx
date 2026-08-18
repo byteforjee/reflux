@@ -93,9 +93,11 @@ export default function AdminPage() {
   const fullAllowlist = Array.from(new Set([...DEFAULT_ADMIN_ALLOWLIST, ...envAllowlist]));
   const isAuthorizedAdmin = isConnected && address && fullAllowlist.includes(address.toLowerCase());
 
+  const activeNetworkKey = isMainnet ? "xlayerMainnet" : "xlayerTestnet";
+
   const fetchInvoices = async () => {
     try {
-      const res = await fetch("/api/invoices");
+      const res = await fetch(`/api/invoices?network=${activeNetworkKey}`);
       const json = await res.json();
       if (json.data) {
         setInvoices(json.data);
@@ -109,7 +111,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchInvoices();
-  }, []);
+  }, [activeNetworkKey]);
 
   // Filter funded or listed invoices for settlement
   const eligibleInvoices = invoices.filter((inv) => ["funded", "listed"].includes(inv.status));

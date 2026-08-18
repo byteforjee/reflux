@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
 import { createPublicClient, http } from "viem";
-import { xlayerTestnet } from "@/lib/chain/config";
+import { xlayerTestnet, xlayerMainnet } from "@/lib/chain/config";
 import { CONTRACT_ADDRESSES, trancheVaultAbi } from "@/lib/contracts";
 
-const publicClient = createPublicClient({
+const mainnetPublicClient = createPublicClient({
+  chain: xlayerMainnet,
+  transport: http(),
+});
+
+const testnetPublicClient = createPublicClient({
   chain: xlayerTestnet,
   transport: http(),
 });
@@ -12,7 +17,7 @@ const publicClient = createPublicClient({
 /**
  * POST /api/invoices
  * Staging intake for a new invoice submission.
- * Creates an InvoiceSubmission record in Prisma with initial status "submitted".
+ * Enforces cryptographic deduplication and network segregation.
  */
 export async function POST(request: Request) {
   try {
@@ -27,6 +32,7 @@ export async function POST(request: Request) {
       documentHash,
       parentSubmissionId,
       resubmissionCount,
+      network = "xlayerMainnet",
     } = body;
 
     // Validate required fields
@@ -43,6 +49,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing or invalid debtorName" }, { status: 400 });
     }
 
+    const effectiveNetwork = network === "xlayerTestnet" ? "xlayerTestnet" : "xlayerMainnet";
+
+    // Deduplication check: prevent duplicate registration of the exact same document on the same network
+    if (documentHash) {
+      const existing = await db.invoiceSubmission.findFirst({
+        where: {
+          documentHash,
+          network: effectiveNetwork,
+          status: {
+            notIn: ["rejected", "cancelled"],
+          },
+        },
+      });
+
+      if (existing) {
+        return NextResponse.json(
+          {
+            error: `Duplicate invoice detected: An invoice with this identical document fingerprint (${documentHash.slice(0, 10)}...) is already active on ${
+              effectiveNetwork === "xlayerMainnet" ? "X Layer Mainnet" : "X Layer Testnet"
+            }.`,
+            existingId: existing.id,
+            existingStatus: existing.status,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const submission = await db.invoiceSubmission.create({
       data: {
         walletAddress: walletAddress.toLowerCase(),
@@ -52,6 +86,7 @@ export async function POST(request: Request) {
         ipfsCid: ipfsCid || null,
         documentHash: documentHash || null,
         status: "submitted",
+        network: effectiveNetwork,
         parentSubmissionId: parentSubmissionId || null,
         resubmissionCount: Number(resubmissionCount || 0),
       },
@@ -67,34 +102,43 @@ export async function POST(request: Request) {
 
 /**
  * GET /api/invoices
- * Returns all active invoice submissions enriched with live onchain TrancheVault state.
+ * Returns invoice submissions filtered by network, status, and wallet, enriched with live onchain state.
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const walletAddress = searchParams.get("walletAddress")?.toLowerCase();
     const status = searchParams.get("status");
+    const network = searchParams.get("network"); // "xlayerMainnet" | "xlayerTestnet"
 
     const where: Record<string, unknown> = {};
     if (walletAddress) where.walletAddress = walletAddress;
     if (status) where.status = status;
+    if (network) where.network = network;
 
     const invoices = await db.invoiceSubmission.findMany({
       where,
       orderBy: { createdAt: "desc" },
     });
 
-    // Enrich with live onchain state from TrancheVault
+    // Enrich with live onchain state from TrancheVault for the corresponding network
     const enriched = await Promise.all(
       invoices.map(async (inv) => {
         if (inv.onchainAssetId) {
           try {
-            const listing = await publicClient.readContract({
-              address: CONTRACT_ADDRESSES.xlayerTestnet.trancheVault,
+            const isMainnet = inv.network === "xlayerMainnet";
+            const client = isMainnet ? mainnetPublicClient : testnetPublicClient;
+            const vaultAddress = isMainnet
+              ? CONTRACT_ADDRESSES.xlayerMainnet.trancheVault
+              : CONTRACT_ADDRESSES.xlayerTestnet.trancheVault;
+
+            const listing = await client.readContract({
+              address: vaultAddress,
               abi: trancheVaultAbi,
               functionName: "getListing",
               args: [BigInt(inv.onchainAssetId)],
             });
+
             const onchainRaisedUsd = Number(listing.raisedAmount) / 10 ** 6;
             const targetUsd = Number(listing.targetAmount) / 10 ** 6;
             const isRepaid = listing.repaid;

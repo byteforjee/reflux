@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
+import { xlayerMainnet } from "@/lib/chain/config";
 
 interface InvoiceRecord {
   id: string;
@@ -26,12 +27,16 @@ interface InvoiceRecord {
   cancelledAt: string | null;
   resubmissionCount: number;
   parentSubmissionId: string | null;
+  network?: string;
   createdAt: string;
 }
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"issuer" | "investor">("issuer");
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const isMainnet = chainId === xlayerMainnet.id;
+  const activeNetworkKey = isMainnet ? "xlayerMainnet" : "xlayerTestnet";
 
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +55,7 @@ export default function DashboardPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/invoices?walletAddress=${address.toLowerCase()}`);
+      const res = await fetch(`/api/invoices?walletAddress=${address.toLowerCase()}&network=${activeNetworkKey}`);
       const json = await res.json();
       if (json.data) {
         setInvoices(json.data);
@@ -60,7 +65,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [address]);
+  }, [address, activeNetworkKey]);
 
   useEffect(() => {
     fetchInvoices();

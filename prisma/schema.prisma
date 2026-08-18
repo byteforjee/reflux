@@ -63,6 +63,9 @@ model InvoiceSubmission {
   /// AI decision: approved | rejected | flagged. Null until scoring completes.
   aiDecision     String?
 
+  /// Network where this facility was submitted: xlayerMainnet | xlayerTestnet
+  network        String   @default("xlayerMainnet")
+
   /// onchain asset ID written to AssetRegistry. Null until the onchain write succeeds.
   onchainAssetId String?
 
@@ -87,6 +90,8 @@ model InvoiceSubmission {
   @@index([walletAddress])
   @@index([status])
   @@index([parentSubmissionId])
+  @@index([network])
+  @@index([documentHash])
 }
 
 /// Tracks submitter wallet trust tier, cancellation frequency, and anti-reroll flags.

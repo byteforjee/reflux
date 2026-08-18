@@ -70,10 +70,12 @@ function SubmitInvoiceContent() {
   // Wizard state
   const [step, setStep] = useState<SubmissionStep>("DOCUMENT");
 
-  // Step 1: File & Hash
+  // Step 1: File & Hash & Deduplication Check
   const [file, setFile] = useState<File | null>(null);
   const [docHash, setDocHash] = useState<string | null>(null);
   const [isHashing, setIsHashing] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<{ isDuplicate: boolean; invoice?: any } | null>(null);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
 
   // Default due date: 30 days in the future
   const defaultFutureDate = new Date(Date.now() + 30 * 86400 * 1000).toISOString().split("T")[0];
@@ -100,20 +102,32 @@ function SubmitInvoiceContent() {
     aiScoreResult?: { tier: string; score: number; apr: number; decision: string };
   }>({ stage: "IDLE" });
 
-  // Handle File Selection
+  // Handle File Selection with Real-Time Deduplication Pre-Check
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
 
     setFile(selected);
     setIsHashing(true);
+    setDuplicateInfo(null);
     try {
       const hash = await computeFileHash(selected);
       setDocHash(hash);
+
+      setIsCheckingDuplicate(true);
+      const activeNet = chain?.id === xlayerTestnet.id ? "xlayerTestnet" : "xlayerMainnet";
+      const dupRes = await fetch(`/api/invoices/check-duplicate?hash=${hash}&network=${activeNet}`);
+      const dupData = await dupRes.json();
+      if (dupData.isDuplicate) {
+        setDuplicateInfo({ isDuplicate: true, invoice: dupData.existingInvoice });
+      } else {
+        setDuplicateInfo({ isDuplicate: false });
+      }
     } catch (err) {
       console.error("Cryptographic hashing error:", err);
     } finally {
       setIsHashing(false);
+      setIsCheckingDuplicate(false);
     }
   };
 
@@ -123,10 +137,19 @@ function SubmitInvoiceContent() {
       return;
     }
 
+    if (duplicateInfo?.isDuplicate) {
+      return;
+    }
+
     setStep("EXECUTE");
 
     let currentCid = pipelineState.ipfsCid;
     let currentSubId = pipelineState.submissionId;
+
+    const activeChainId = chain?.id === xlayerTestnet.id ? xlayerTestnet.id : xlayerMainnet.id;
+    const isMainnet = activeChainId === xlayerMainnet.id;
+    const networkKey = isMainnet ? "xlayerMainnet" : "xlayerTestnet";
+    const targetChain = isMainnet ? xlayerMainnet : xlayerTestnet;
 
     try {
       // 1. Secure Collateral Archival
@@ -155,6 +178,7 @@ function SubmitInvoiceContent() {
             documentHash: docHash,
             parentSubmissionId,
             resubmissionCount,
+            network: networkKey,
           }),
         });
 
@@ -167,11 +191,6 @@ function SubmitInvoiceContent() {
       }
 
       // 3. Network Verification & Selection
-      const activeChainId = chain?.id === xlayerTestnet.id ? xlayerTestnet.id : xlayerMainnet.id;
-      const isMainnet = activeChainId === xlayerMainnet.id;
-      const networkKey = isMainnet ? "xlayerMainnet" : "xlayerTestnet";
-      const targetChain = isMainnet ? xlayerMainnet : xlayerTestnet;
-
       if (chain && chain.id !== xlayerMainnet.id && chain.id !== xlayerTestnet.id && switchChainAsync) {
         try {
           await switchChainAsync({ chainId: xlayerMainnet.id });
@@ -362,16 +381,36 @@ function SubmitInvoiceContent() {
             )}
           </label>
 
-          {/* Hash Display */}
+          {/* Hash & Deduplication Display */}
           {isHashing && (
             <p className="text-xs text-[#98FFE8] animate-pulse">Generating cryptographic SHA-256 fingerprint...</p>
           )}
 
-          {docHash && !isHashing && (
+          {isCheckingDuplicate && !isHashing && (
+            <p className="text-xs text-[#98FFE8] animate-pulse">Verifying invoice uniqueness on X Layer...</p>
+          )}
+
+          {duplicateInfo?.isDuplicate && (
+            <div className="p-4 rounded-xl border border-rose-500/40 bg-rose-500/10 space-y-2 text-xs">
+              <div className="flex items-center gap-2 text-rose-400 font-bold">
+                <span>🚫 Duplicate Invoice Detected</span>
+              </div>
+              <p className="text-rose-200/90 leading-relaxed text-[11px]">
+                This identical document has already been registered on {chain?.id === xlayerTestnet.id ? "X Layer Testnet" : "X Layer Mainnet"} for debtor <strong>{duplicateInfo.invoice.debtorName}</strong> (${Number(duplicateInfo.invoice.amount).toLocaleString()}). To prevent double-financing fraud, duplicate document submissions are blocked.
+              </p>
+            </div>
+          )}
+
+          {docHash && !isHashing && !duplicateInfo?.isDuplicate && (
             <div className="p-4 rounded-xl border border-[#98FFE8]/20 bg-[#98FFE8]/5 space-y-1">
-              <span className="text-[11px] font-bold text-[#98FFE8] uppercase tracking-wider block">
-                ✓ Cryptographic Fingerprint Verified
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#98FFE8] uppercase tracking-wider block">
+                  ✓ Unique Cryptographic Fingerprint Verified
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded">
+                  Ready to Tokenize
+                </span>
+              </div>
               <p className="text-xs font-mono text-[#F2FBF9]/90 break-all">{docHash}</p>
             </div>
           )}
@@ -379,7 +418,7 @@ function SubmitInvoiceContent() {
           {/* Next Action */}
           <div className="pt-4 flex justify-end">
             <button
-              disabled={!file || !docHash || isHashing}
+              disabled={!file || !docHash || isHashing || isCheckingDuplicate || duplicateInfo?.isDuplicate}
               onClick={() => setStep("DETAILS")}
               className="px-6 py-3 rounded-xl text-xs font-bold text-[#161A1D] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:opacity-95"
               style={{ background: "var(--gradient-surge)" }}

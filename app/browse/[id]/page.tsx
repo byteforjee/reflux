@@ -424,26 +424,66 @@ export default function ListingDetailPage({
             <div className="p-4 rounded-xl border border-[#98FFE8]/20 bg-[#98FFE8]/5 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#5B6479]">Escrow Funding Progress</span>
-                <span className="font-bold text-[#98FFE8]">
-                  {isFullyFunded ? "100% Funded" : `${progressPct}% Funded`}
+                <span className={`font-bold ${isFullyFunded ? "text-emerald-300" : "text-[#98FFE8]"}`}>
+                  {isFullyFunded ? "100% Fully Funded (Completed)" : `${progressPct}% Funded`}
                 </span>
               </div>
               <div className="w-full h-2 rounded-full bg-[#161A1D] border border-[#E3E0D6]/10 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#1F8F84] to-[#98FFE8] transition-all duration-500"
+                  className={`h-full transition-all duration-500 ${
+                    isFullyFunded
+                      ? "bg-emerald-400"
+                      : "bg-gradient-to-r from-[#1F8F84] to-[#98FFE8]"
+                  }`}
                   style={{
                     width: `${isFullyFunded ? 100 : Math.max(progressPct, onchainRaisedUsd > 0 ? 3 : 0)}%`,
                   }}
                 />
               </div>
-              <div className="flex items-center justify-between text-[11px] text-[#5B6479]">
-                <span>Escrowed: ${onchainRaisedUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} mUSDC</span>
-                <span>Remaining: ${Math.max(0, targetUsd - onchainRaisedUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} mUSDC</span>
+              <div className="flex items-center justify-between text-[11px] text-[#5B6479] font-mono">
+                <span>Escrowed: ${onchainRaisedUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {tokenSymbol}</span>
+                <span>Remaining: ${Math.max(0, targetUsd - onchainRaisedUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {tokenSymbol}</span>
               </div>
             </div>
 
-            {/* EXPIRED UNFUNDED ESCROW REFUND PANEL */}
-            {isExpiredUnfunded ? (
+            {/* FULLY FUNDED / COMPLETED STATUS PANEL (No room to re-fund) */}
+            {isFullyFunded ? (
+              <div className="p-5 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 space-y-4 text-xs animate-in fade-in duration-200">
+                <div className="flex items-center gap-2.5 text-emerald-400 font-bold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-sm">✓ Facility 100% Completed & Fully Funded</span>
+                </div>
+                <p className="text-emerald-200/90 leading-relaxed text-[11px]">
+                  This credit facility has reached its target of <strong>${targetUsd.toLocaleString()} {tokenSymbol}</strong> and is locked. Escrow funds are secured onchain awaiting debtor maturity repayment. <strong>No further contributions are accepted.</strong>
+                </p>
+
+                {userPositionUsd > 0 ? (
+                  <div className="p-3 rounded-xl bg-[#121517] border border-emerald-500/30 space-y-1">
+                    <span className="text-[#5B6479] block text-[10px] uppercase tracking-wider font-mono">Your Escrow Holdings</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-emerald-300 font-bold text-sm">
+                        ${userPositionUsd.toFixed(2)} {tokenSymbol}
+                      </span>
+                      <span className="text-[10px] text-emerald-400/80 bg-emerald-950/60 px-2 py-0.5 rounded font-mono">
+                        {((userPositionUsd / targetUsd) * 100).toFixed(1)}% Share
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-[#121517] border border-[#E3E0D6]/10 text-[11px] text-[#5B6479]">
+                    Facility is closed to new investors. Track active disbursements in Portfolio.
+                  </div>
+                )}
+
+                <Link
+                  href="/portfolio"
+                  className="block w-full text-center py-3 rounded-xl border border-emerald-500/40 bg-emerald-500/15 text-emerald-300 font-bold text-xs hover:bg-emerald-500/25 transition-colors"
+                >
+                  View in Investor Portfolio →
+                </Link>
+              </div>
+            ) : isExpiredUnfunded ? (
+              /* EXPIRED UNFUNDED ESCROW REFUND PANEL */
               <div className="p-5 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4 text-xs">
                 <div className="flex items-center gap-2 text-amber-400 font-bold">
                   <span>⚡ Funding Window Closed (All-or-Nothing)</span>
@@ -456,7 +496,7 @@ export default function ListingDetailPage({
                     <div className="flex items-center justify-between p-2 rounded-lg bg-[#161A1D] border border-amber-500/30 text-xs">
                       <span className="text-[#5B6479]">Your Escrow Deposit</span>
                       <span className="font-mono text-[#98FFE8] font-bold">
-                        ${userPositionUsd.toFixed(2)} mUSDC
+                        ${userPositionUsd.toFixed(2)} {tokenSymbol}
                       </span>
                     </div>
                     <button
@@ -467,7 +507,7 @@ export default function ListingDetailPage({
                     >
                       {isTxPending && txStep === "REFUNDING"
                         ? "Claiming 100% Refund..."
-                        : `Claim 100% Escrow Refund ($${userPositionUsd.toFixed(2)} mUSDC)`}
+                        : `Claim 100% Escrow Refund ($${userPositionUsd.toFixed(2)} ${tokenSymbol})`}
                     </button>
                   </div>
                 ) : (
@@ -490,7 +530,7 @@ export default function ListingDetailPage({
                   <div className="p-3.5 rounded-xl border border-[#98FFE8]/20 bg-[#98FFE8]/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                     <div>
                       <span className="text-[#5B6479] block text-[11px]">
-                        Your {isMainnet ? "USDC" : "mUSDC"} Balance ({isMainnet ? "Mainnet" : "Testnet"})
+                        Your {tokenSymbol} Balance ({isMainnet ? "Mainnet" : "Testnet"})
                       </span>
                       <span className="font-mono font-bold text-[#F2FBF9]">
                         ${userBalanceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {tokenSymbol}

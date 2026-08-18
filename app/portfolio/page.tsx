@@ -97,10 +97,12 @@ export default function PortfolioPage() {
     }
   };
 
+  const activeNetworkKey = isMainnet ? "xlayerMainnet" : "xlayerTestnet";
+
   useEffect(() => {
     async function fetchInvoices() {
       try {
-        const res = await fetch("/api/invoices");
+        const res = await fetch(`/api/invoices?network=${activeNetworkKey}`);
         const json = await res.json();
         if (json.data) {
           setInvoices(json.data);
@@ -112,7 +114,7 @@ export default function PortfolioPage() {
       }
     }
     fetchInvoices();
-  }, []);
+  }, [activeNetworkKey]);
 
   // Filter listings that are active or terminal in market
   const marketplaceInvoices = invoices.filter((inv) =>
