@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient, useChainId } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient, useChainId, useSwitchChain } from "wagmi";
 import { CONTRACT_ADDRESSES, trancheVaultAbi, mockUsdcAbi } from "@/lib/contracts";
 import { xlayerTestnet, xlayerMainnet } from "@/lib/chain/config";
 
@@ -54,6 +54,7 @@ interface InvoiceRecord {
   fundingDeadlineIso?: string | null;
   isExpiredUnfunded?: boolean;
   documentHash?: string | null;
+  network?: string;
   createdAt: string;
 }
 
@@ -63,7 +64,8 @@ export default function ListingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chain } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const publicClient = usePublicClient();
 
   const [invoice, setInvoice] = useState<InvoiceRecord | null>(null);
@@ -201,7 +203,14 @@ export default function ListingDetailPage({
   const needsApproval = currentAllowance < investUnits;
 
   // Handle Approve Tx
-  const handleApprove = () => {
+  const handleApprove = async () => {
+    if (chain && chain.id !== currentChain.id && switchChainAsync) {
+      try {
+        await switchChainAsync({ chainId: currentChain.id });
+      } catch {
+        return;
+      }
+    }
     setTxStep("APPROVING");
     writeContract({
       address: usdcAddress,
@@ -213,8 +222,15 @@ export default function ListingDetailPage({
   };
 
   // Handle Invest Tx
-  const handleInvest = () => {
+  const handleInvest = async () => {
     if (!invoice?.onchainAssetId && !invoice?.id) return;
+    if (chain && chain.id !== currentChain.id && switchChainAsync) {
+      try {
+        await switchChainAsync({ chainId: currentChain.id });
+      } catch {
+        return;
+      }
+    }
     setTxStep("INVESTING");
     const assetId = BigInt(invoice?.onchainAssetId || "1");
 
@@ -228,8 +244,15 @@ export default function ListingDetailPage({
   };
 
   // Handle 100% Escrow Refund Tx
-  const handleClaimRefund = () => {
+  const handleClaimRefund = async () => {
     if (!invoice?.onchainAssetId && !invoice?.id) return;
+    if (chain && chain.id !== currentChain.id && switchChainAsync) {
+      try {
+        await switchChainAsync({ chainId: currentChain.id });
+      } catch {
+        return;
+      }
+    }
     setTxStep("REFUNDING");
     const assetId = BigInt(invoice?.onchainAssetId || "1");
 
@@ -351,6 +374,24 @@ export default function ListingDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Network Mismatch Notice */}
+      {isConnected && chain && chain.id !== currentChain.id && (
+        <div className="p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-xs text-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="font-bold block text-amber-200">Network Switch Required</span>
+            <span>
+              This credit facility was tokenized on <strong>{isMainnet ? "X Layer Mainnet" : "X Layer Testnet"}</strong>. Your wallet is currently connected to <strong>{chain.name || `Chain ID ${chain.id}`}</strong>.
+            </span>
+          </div>
+          <button
+            onClick={() => switchChainAsync?.({ chainId: currentChain.id })}
+            className="px-4 py-2 rounded-lg bg-amber-400 text-[#161A1D] text-xs font-bold hover:bg-amber-300 transition-colors whitespace-nowrap"
+          >
+            Switch to {isMainnet ? "X Layer Mainnet" : "X Layer Testnet"}
+          </button>
+        </div>
+      )}
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
