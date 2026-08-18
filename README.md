@@ -45,14 +45,23 @@ To eliminate partial-tokenization fraud and repayment ambiguity:
 
 ---
 
-## 🔗 Verified Smart Contracts on X Layer Testnet
+## 🔗 Verified Smart Contracts on X Layer
 
+### 🌐 X Layer Mainnet (Chain ID: 196)
 | Contract | Address | Explorer | Description |
 | :--- | :--- | :--- | :--- |
-| **`AssetRegistry.sol`** | `0xaf248c5474f40945ed41664125350a890782cad0` | [OKLink Explorer](https://www.oklink.com/xlayer-test/address/0xaf248c5474f40945ed41664125350a890782cad0) | 10-state asset lifecycle, IPFS proofs & access control |
-| **`TrancheVault.sol`** | `0x56deb48168bdfe8a396db8780d239913279ed4f2` | [OKLink Explorer](https://www.oklink.com/xlayer-test/address/0x56deb48168bdfe8a396db8780d239913279ed4f2) | Escrow liquidity vault, all-or-nothing refunds & payouts |
-| **`RiskOracle.sol`** | `0x37e1Bf4Ac7e80507c22f6710B205b696068F1127` | [OKLink Explorer](https://www.oklink.com/xlayer-test/address/0x37e1Bf4Ac7e80507c22f6710B205b696068F1127) | Immutable AI risk scores, tiers, and APR storage |
-| **`MockUSDC.sol`** | `0xD84509d311700d7946439E66DD6573138d79bBCb` | [OKLink Explorer](https://www.oklink.com/xlayer-test/address/0xD84509d311700d7946439E66DD6573138d79bBCb) | 6-decimal test stablecoin with built-in 1-click faucet |
+| **`AssetRegistry.sol`** | `0xd84509d311700d7946439e66dd6573138d79bbcb` | [OKLink Mainnet](https://www.oklink.com/xlayer/address/0xd84509d311700d7946439e66dd6573138d79bbcb) | 10-state asset lifecycle, IPFS proofs & access control |
+| **`RiskOracle.sol`** | `0xdebf3e5a598e27d28c912a3cac88df81c253730a` | [OKLink Mainnet](https://www.oklink.com/xlayer/address/0xdebf3e5a598e27d28c912a3cac88df81c253730a) | Immutable AI risk scores, tiers, and APR storage |
+| **`TrancheVault.sol`** | `0x37e1bf4ac7e80507c22f6710b205b696068f1127` | [OKLink Mainnet](https://www.oklink.com/xlayer/address/0x37e1bf4ac7e80507c22f6710b205b696068f1127) | Escrow liquidity vault, all-or-nothing refunds & payouts |
+| **`Native Circle USDC`** | `0x74b7f16337b8972027f6196a17a631ac6de26d22` | [OKLink Mainnet](https://www.oklink.com/xlayer/token/0x74b7f16337b8972027f6196a17a631ac6de26d22) | Official Circle USD Coin on X Layer |
+
+### 🧪 X Layer Testnet (Chain ID: 1952)
+| Contract | Address | Explorer | Description |
+| :--- | :--- | :--- | :--- |
+| **`AssetRegistry.sol`** | `0xaf248c5474f40945ed41664125350a890782cad0` | [OKLink Testnet](https://www.oklink.com/xlayer-test/address/0xaf248c5474f40945ed41664125350a890782cad0) | 10-state asset lifecycle, IPFS proofs & access control |
+| **`RiskOracle.sol`** | `0x37e1Bf4Ac7e80507c22f6710B205b696068F1127` | [OKLink Testnet](https://www.oklink.com/xlayer-test/address/0x37e1Bf4Ac7e80507c22f6710B205b696068F1127) | Immutable AI risk scores, tiers, and APR storage |
+| **`TrancheVault.sol`** | `0x452857e278fe68376e264662ff944cc88cf65fb7` | [OKLink Testnet](https://www.oklink.com/xlayer-test/address/0x452857e278fe68376e264662ff944cc88cf65fb7) | Escrow liquidity vault, all-or-nothing refunds & payouts |
+| **`MockUSDC.sol`** | `0xD84509d311700d7946439E66DD6573138d79bBCb` | [OKLink Testnet](https://www.oklink.com/xlayer-test/address/0xD84509d311700d7946439E66DD6573138d79bBCb) | 6-decimal test stablecoin with built-in 1-click faucet |
 
 ---
 
