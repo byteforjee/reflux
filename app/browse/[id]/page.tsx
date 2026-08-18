@@ -2,9 +2,9 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient, useChainId } from "wagmi";
 import { CONTRACT_ADDRESSES, trancheVaultAbi, mockUsdcAbi } from "@/lib/contracts";
-import { xlayerTestnet } from "@/lib/chain/config";
+import { xlayerTestnet, xlayerMainnet } from "@/lib/chain/config";
 
 const erc20Abi = [
   {
@@ -23,6 +23,13 @@ const erc20Abi = [
       { name: "spender", type: "address" },
     ],
     name: "allowance",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
@@ -72,21 +79,30 @@ export default function ListingDetailPage({
     hash: txHash,
   });
 
-  const mockUsdcAddress = CONTRACT_ADDRESSES.xlayerTestnet.mockUsdc;
-  const trancheVaultAddress = CONTRACT_ADDRESSES.xlayerTestnet.trancheVault;
+  const chainId = useChainId();
+  const isMainnet = chainId === xlayerMainnet.id;
+  const currentChain = isMainnet ? xlayerMainnet : xlayerTestnet;
+  const tokenSymbol = isMainnet ? "USDC" : "mUSDC";
 
-  // Read allowance for MockUSDC
+  const usdcAddress = isMainnet
+    ? (CONTRACT_ADDRESSES.xlayerMainnet.usdc as `0x${string}`)
+    : (CONTRACT_ADDRESSES.xlayerTestnet.mockUsdc as `0x${string}`);
+  const trancheVaultAddress = isMainnet
+    ? (CONTRACT_ADDRESSES.xlayerMainnet.trancheVault as `0x${string}`)
+    : (CONTRACT_ADDRESSES.xlayerTestnet.trancheVault as `0x${string}`);
+
+  // Read allowance for USDC
   const { data: allowanceData, refetch: refetchAllowance } = useReadContract({
-    address: mockUsdcAddress,
+    address: usdcAddress,
     abi: erc20Abi,
     functionName: "allowance",
     args: address && trancheVaultAddress ? [address, trancheVaultAddress] : undefined,
   });
 
-  // Read mUSDC wallet balance
+  // Read USDC wallet balance
   const { data: balanceData, refetch: refetchBalance } = useReadContract({
-    address: mockUsdcAddress,
-    abi: mockUsdcAbi,
+    address: usdcAddress,
+    abi: erc20Abi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
   });
@@ -132,14 +148,14 @@ export default function ListingDetailPage({
     return `${days}d ${hours}h ${mins}m remaining`;
   };
 
-  // 1-Click Faucet Handler
+  // 1-Click Faucet Handler (Testnet only)
   const handleClaimFaucet = async () => {
-    if (!address) return;
+    if (!address || isMainnet) return;
     setIsMintingFaucet(true);
     setFaucetSuccess(false);
     try {
       const tx = await writeContractAsync({
-        address: mockUsdcAddress,
+        address: usdcAddress,
         abi: mockUsdcAbi,
         functionName: "mint",
         args: [address, BigInt(10_000 * 10 ** 6)], // 10,000 mUSDC
@@ -188,11 +204,11 @@ export default function ListingDetailPage({
   const handleApprove = () => {
     setTxStep("APPROVING");
     writeContract({
-      address: mockUsdcAddress,
+      address: usdcAddress,
       abi: erc20Abi,
       functionName: "approve",
       args: [trancheVaultAddress, investUnits],
-      chainId: xlayerTestnet.id,
+      chainId: currentChain.id,
     });
   };
 
@@ -207,7 +223,7 @@ export default function ListingDetailPage({
       abi: trancheVaultAbi,
       functionName: "invest",
       args: [assetId, investUnits],
-      chainId: xlayerTestnet.id,
+      chainId: currentChain.id,
     });
   };
 
@@ -222,7 +238,7 @@ export default function ListingDetailPage({
       abi: trancheVaultAbi,
       functionName: "claimRefund",
       args: [assetId],
-      chainId: xlayerTestnet.id,
+      chainId: currentChain.id,
     });
   };
 
@@ -471,28 +487,38 @@ export default function ListingDetailPage({
               <div className="space-y-4 pt-2">
                 {/* Wallet Balance & Faucet Banner */}
                 {isConnected && (
-                  <div className="p-3.5 rounded-xl border border-[#98FFE8]/20 bg-[#98FFE8]/5 flex items-center justify-between text-xs">
+                  <div className="p-3.5 rounded-xl border border-[#98FFE8]/20 bg-[#98FFE8]/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                     <div>
-                      <span className="text-[#5B6479] block text-[11px]">Your Wallet Balance</span>
+                      <span className="text-[#5B6479] block text-[11px]">
+                        Your {isMainnet ? "USDC" : "mUSDC"} Balance ({isMainnet ? "Mainnet" : "Testnet"})
+                      </span>
                       <span className="font-mono font-bold text-[#F2FBF9]">
-                        ${userBalanceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} mUSDC
+                        ${userBalanceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {tokenSymbol}
                       </span>
                     </div>
-                    <button
-                      onClick={handleClaimFaucet}
-                      disabled={isMintingFaucet}
-                      className="px-3 py-1.5 rounded-lg bg-[#98FFE8]/15 border border-[#98FFE8]/40 hover:bg-[#98FFE8]/25 text-[#98FFE8] font-bold text-[11px] transition-all disabled:opacity-50 flex items-center gap-1.5"
-                    >
-                      {isMintingFaucet ? (
-                        <span>Minting 10k...</span>
-                      ) : (
-                        <span>+ Faucet: Claim 10,000 mUSDC</span>
-                      )}
-                    </button>
+
+                    {!isMainnet ? (
+                      <button
+                        onClick={handleClaimFaucet}
+                        disabled={isMintingFaucet}
+                        className="px-3 py-1.5 rounded-lg bg-[#98FFE8]/15 border border-[#98FFE8]/40 hover:bg-[#98FFE8]/25 text-[#98FFE8] font-bold text-[11px] transition-all disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {isMintingFaucet ? (
+                          <span>Minting 10k...</span>
+                        ) : (
+                          <span>+ Faucet: Claim 10,000 mUSDC</span>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Native Circle USDC</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {faucetSuccess && (
+                {faucetSuccess && !isMainnet && (
                   <p className="text-[11px] text-[#98FFE8] font-semibold bg-[#98FFE8]/10 p-2 rounded border border-[#98FFE8]/20">
                     ✓ 10,000 test mUSDC minted to your wallet on X Layer Testnet!
                   </p>
@@ -500,7 +526,7 @@ export default function ListingDetailPage({
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#5B6479] uppercase tracking-wider block">
-                    Investment Amount ($ mUSDC)
+                    Investment Amount ($ {tokenSymbol})
                   </label>
                   <input
                     type="number"
@@ -536,8 +562,8 @@ export default function ListingDetailPage({
                       style={{ background: "var(--gradient-surge)" }}
                     >
                       {isTxPending && txStep === "APPROVING"
-                        ? "Approving mUSDC..."
-                        : `Step 1: Approve $${parsedInvestAmount} mUSDC`}
+                        ? `Approving ${tokenSymbol}...`
+                        : `Step 1: Approve $${parsedInvestAmount} ${tokenSymbol}`}
                     </button>
                   ) : (
                     <button
@@ -548,7 +574,7 @@ export default function ListingDetailPage({
                     >
                       {isTxPending && txStep === "INVESTING"
                         ? "Depositing into Escrow..."
-                        : `Deposit $${parsedInvestAmount} into Escrow`}
+                        : `Step 2: Deposit $${parsedInvestAmount} into Escrow`}
                     </button>
                   )}
                 </div>

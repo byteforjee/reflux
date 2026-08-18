@@ -1,6 +1,6 @@
 import { createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { xlayerTestnet } from "@/lib/chain/config";
+import { xlayerTestnet, xlayerMainnet } from "@/lib/chain/config";
 import { CONTRACT_ADDRESSES } from "./addresses";
 import { riskOracleAbi } from "./abis/riskOracleAbi";
 import { trancheVaultAbi } from "./abis/trancheVaultAbi";
@@ -20,6 +20,7 @@ export async function writeScoreOnchain(params: {
   aprBps: number;
   rationale: string;
   decision: string;
+  network?: "xlayerMainnet" | "xlayerTestnet";
 }): Promise<{ success: boolean; txHash?: `0x${string}`; error?: string }> {
   const privateKey = process.env.ORACLE_PRIVATE_KEY;
 
@@ -27,6 +28,10 @@ export async function writeScoreOnchain(params: {
     console.warn("ORACLE_PRIVATE_KEY not set. Onchain write skipped.");
     return { success: false, error: "ORACLE_PRIVATE_KEY not set in environment" };
   }
+
+  const network = params.network || (process.env.NEXT_PUBLIC_DEFAULT_NETWORK === "xlayerTestnet" ? "xlayerTestnet" : "xlayerMainnet");
+  const targetChain = network === "xlayerTestnet" ? xlayerTestnet : xlayerMainnet;
+  const targetAddresses = network === "xlayerTestnet" ? CONTRACT_ADDRESSES.xlayerTestnet : CONTRACT_ADDRESSES.xlayerMainnet;
 
   try {
     const formattedPrivateKey = privateKey.startsWith("0x")
@@ -36,18 +41,18 @@ export async function writeScoreOnchain(params: {
     const account = privateKeyToAccount(formattedPrivateKey);
 
     const publicClient = createPublicClient({
-      chain: xlayerTestnet,
+      chain: targetChain,
       transport: http(),
     });
 
     const walletClient = createWalletClient({
       account,
-      chain: xlayerTestnet,
+      chain: targetChain,
       transport: http(),
     });
 
-    const oracleAddress = CONTRACT_ADDRESSES.xlayerTestnet.riskOracle;
-    const vaultAddress = CONTRACT_ADDRESSES.xlayerTestnet.trancheVault;
+    const oracleAddress = targetAddresses.riskOracle;
+    const vaultAddress = targetAddresses.trancheVault;
 
     // 1. Call setScore(assetId, tier, score, apr, rationale, decision) on RiskOracle
     const hash = await walletClient.writeContract({

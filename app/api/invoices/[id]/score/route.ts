@@ -18,6 +18,7 @@ export async function POST(
   const { id } = await params;
   const body = await _request.json().catch(() => ({}));
   const incomingAssetId = body?.onchainAssetId;
+  const incomingNetwork = body?.network as ("xlayerMainnet" | "xlayerTestnet") | undefined;
 
   try {
     const invoice = await db.invoiceSubmission.findUnique({
@@ -69,6 +70,7 @@ export async function POST(
           aprBps: aiResult.aprBps,
           rationale: aiResult.rationale,
           decision: aiResult.decision,
+          network: incomingNetwork,
         });
 
         if (onchainResult.success && onchainResult.txHash) {

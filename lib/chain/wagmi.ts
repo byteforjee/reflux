@@ -14,13 +14,13 @@ export const wagmiConfig = createConfig(
     appUrl: "https://reflux.finance",
     appIcon: "/favicon.png",
 
-    // Supported chains — X Layer Testnet (default) & X Layer Mainnet
-    chains: [xlayerTestnet, xlayerMainnet],
+    // Supported chains — X Layer Mainnet (default) & X Layer Testnet
+    chains: [xlayerMainnet, xlayerTestnet],
 
     // Transports per chain
     transports: {
-      [xlayerTestnet.id]: http(xlayerTestnet.rpcUrls.default.http[0]),
       [xlayerMainnet.id]: http(xlayerMainnet.rpcUrls.default.http[0]),
+      [xlayerTestnet.id]: http(xlayerTestnet.rpcUrls.default.http[0]),
     },
 
     // WalletConnect Project ID (optional fallback placeholder for ConnectKit)

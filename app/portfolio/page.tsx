@@ -2,9 +2,19 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient, useChainId } from "wagmi";
 import { CONTRACT_ADDRESSES, trancheVaultAbi, mockUsdcAbi } from "@/lib/contracts";
-import { xlayerTestnet } from "@/lib/chain/config";
+import { xlayerTestnet, xlayerMainnet } from "@/lib/chain/config";
+
+const erc20Abi = [
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
 interface InvoiceRecord {
   id: string;
@@ -27,6 +37,10 @@ interface InvoiceRecord {
 export default function PortfolioPage() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
+  const chainId = useChainId();
+
+  const isMainnet = chainId === xlayerMainnet.id;
+  const currentChain = isMainnet ? xlayerMainnet : xlayerTestnet;
 
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,27 +55,31 @@ export default function PortfolioPage() {
     hash: txHash,
   });
 
-  const trancheVaultAddress = CONTRACT_ADDRESSES.xlayerTestnet.trancheVault;
-  const mockUsdcAddress = CONTRACT_ADDRESSES.xlayerTestnet.mockUsdc;
+  const trancheVaultAddress = isMainnet
+    ? (CONTRACT_ADDRESSES.xlayerMainnet.trancheVault as `0x${string}`)
+    : (CONTRACT_ADDRESSES.xlayerTestnet.trancheVault as `0x${string}`);
+  const usdcAddress = isMainnet
+    ? (CONTRACT_ADDRESSES.xlayerMainnet.usdc as `0x${string}`)
+    : (CONTRACT_ADDRESSES.xlayerTestnet.mockUsdc as `0x${string}`);
 
-  // Read mUSDC wallet balance
+  // Read USDC wallet balance
   const { data: balanceData, refetch: refetchBalance } = useReadContract({
-    address: mockUsdcAddress,
-    abi: mockUsdcAbi,
+    address: usdcAddress,
+    abi: erc20Abi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
   });
 
   const userBalanceUsd = balanceData ? Number(BigInt(balanceData.toString())) / 10 ** 6 : 0;
 
-  // 1-Click Faucet Handler
+  // 1-Click Faucet Handler (Testnet only)
   const handleClaimFaucet = async () => {
-    if (!address) return;
+    if (!address || isMainnet) return;
     setIsMintingFaucet(true);
     setFaucetSuccess(false);
     try {
       const tx = await writeContractAsync({
-        address: mockUsdcAddress,
+        address: usdcAddress,
         abi: mockUsdcAbi,
         functionName: "mint",
         args: [address, BigInt(10_000 * 10 ** 6)], // 10,000 mUSDC
@@ -143,7 +161,7 @@ export default function PortfolioPage() {
       abi: trancheVaultAbi,
       functionName: "claimPayout",
       args: [assetId],
-      chainId: xlayerTestnet.id,
+      chainId: currentChain.id,
     });
   };
 
@@ -158,7 +176,7 @@ export default function PortfolioPage() {
       abi: trancheVaultAbi,
       functionName: "claimRefund",
       args: [assetId],
-      chainId: xlayerTestnet.id,
+      chainId: currentChain.id,
     });
   };
 

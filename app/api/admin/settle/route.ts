@@ -1,8 +1,28 @@
 import { NextResponse } from "next/server";
-import { createWalletClient, createPublicClient, http, parseAbi } from "viem";
+import { createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { xlayerTestnet } from "@/lib/chain/config";
+import { xlayerTestnet, xlayerMainnet } from "@/lib/chain/config";
 import { CONTRACT_ADDRESSES, trancheVaultAbi, mockUsdcAbi } from "@/lib/contracts";
+
+const erc20Abi = [
+  {
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
 /**
  * POST /api/admin/settle
@@ -11,7 +31,7 @@ import { CONTRACT_ADDRESSES, trancheVaultAbi, mockUsdcAbi } from "@/lib/contract
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { assetId, repaymentAmountUsd } = body;
+    const { assetId, repaymentAmountUsd, network } = body;
 
     if (!assetId) {
       return NextResponse.json({ error: "Missing assetId" }, { status: 400 });
@@ -28,45 +48,59 @@ export async function POST(request: Request) {
 
     const account = privateKeyToAccount(formattedPrivateKey);
 
+    const isMainnet = network === "xlayerMainnet";
+    const targetChain = isMainnet ? xlayerMainnet : xlayerTestnet;
+
     const publicClient = createPublicClient({
-      chain: xlayerTestnet,
+      chain: targetChain,
       transport: http(),
     });
 
     const walletClient = createWalletClient({
       account,
-      chain: xlayerTestnet,
+      chain: targetChain,
       transport: http(),
     });
 
-    const mockUsdcAddress = CONTRACT_ADDRESSES.xlayerTestnet.mockUsdc;
-    const vaultAddress = CONTRACT_ADDRESSES.xlayerTestnet.trancheVault;
+    const usdcAddress = isMainnet
+      ? CONTRACT_ADDRESSES.xlayerMainnet.usdc
+      : CONTRACT_ADDRESSES.xlayerTestnet.mockUsdc;
+    const vaultAddress = isMainnet
+      ? CONTRACT_ADDRESSES.xlayerMainnet.trancheVault
+      : CONTRACT_ADDRESSES.xlayerTestnet.trancheVault;
 
     const amountUnits = BigInt(Math.round((Number(repaymentAmountUsd) || 10137.49) * 10 ** 6));
 
-    // 1. Ensure admin account has enough mUSDC
+    // 1. Ensure admin account has enough USDC
     const balance = await publicClient.readContract({
-      address: mockUsdcAddress,
-      abi: mockUsdcAbi,
+      address: usdcAddress,
+      abi: erc20Abi,
       functionName: "balanceOf",
       args: [account.address],
     });
 
     if (balance < amountUnits) {
-      console.log("Minting mUSDC to admin key for settlement...");
-      const mintTx = await walletClient.writeContract({
-        address: mockUsdcAddress,
-        abi: mockUsdcAbi,
-        functionName: "mint",
-        args: [account.address, amountUnits * BigInt(2)],
-      });
-      await publicClient.waitForTransactionReceipt({ hash: mintTx });
+      if (!isMainnet) {
+        console.log("Minting test mUSDC to admin key for testnet settlement...");
+        const mintTx = await walletClient.writeContract({
+          address: CONTRACT_ADDRESSES.xlayerTestnet.mockUsdc,
+          abi: mockUsdcAbi,
+          functionName: "mint",
+          args: [account.address, amountUnits * BigInt(2)],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: mintTx });
+      } else {
+        return NextResponse.json(
+          { error: `Insufficient Mainnet USDC balance in admin wallet. Required: $${Number(amountUnits) / 1e6} USDC` },
+          { status: 400 }
+        );
+      }
     }
 
     // 2. Approve TrancheVault
     const approveTx = await walletClient.writeContract({
-      address: mockUsdcAddress,
-      abi: mockUsdcAbi,
+      address: usdcAddress,
+      abi: erc20Abi,
       functionName: "approve",
       args: [vaultAddress, amountUnits],
     });
@@ -83,15 +117,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      data: {
-        txHash: settleTx,
-        assetId: String(assetId),
-        repaymentAmountUsd,
-      },
+      txHash: settleTx,
+      repaymentAmountUsd,
+      assetId,
+      network: isMainnet ? "xlayerMainnet" : "xlayerTestnet",
     });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal Server Error";
-    console.error("POST /api/admin/settle error:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (error: any) {
+    console.error("Admin settle error:", error);
+    return NextResponse.json(
+      { error: error?.shortMessage || error?.message || "Failed to execute repayment settlement" },
+      { status: 500 }
+    );
   }
 }

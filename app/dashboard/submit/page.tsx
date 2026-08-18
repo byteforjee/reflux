@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useAccount, useSwitchChain, useWriteContract, usePublicClient } from "wagmi";
 import { computeFileHash, hashToBytes32, uploadInvoiceToIpfs } from "@/lib/storage";
 import { CONTRACT_ADDRESSES, assetRegistryAbi } from "@/lib/contracts";
-import { xlayerTestnet } from "@/lib/chain/config";
+import { xlayerTestnet, xlayerMainnet } from "@/lib/chain/config";
 
 type SubmissionStep = "DOCUMENT" | "DETAILS" | "EXECUTE" | "COMPLETE";
 
@@ -166,13 +166,18 @@ function SubmitInvoiceContent() {
         currentSubId = intakeData.data.id;
       }
 
-      // 3. Network Verification & Switch if needed
-      if (chain && chain.id !== xlayerTestnet.id && switchChainAsync) {
+      // 3. Network Verification & Selection
+      const activeChainId = chain?.id === xlayerTestnet.id ? xlayerTestnet.id : xlayerMainnet.id;
+      const isMainnet = activeChainId === xlayerMainnet.id;
+      const networkKey = isMainnet ? "xlayerMainnet" : "xlayerTestnet";
+      const targetChain = isMainnet ? xlayerMainnet : xlayerTestnet;
+
+      if (chain && chain.id !== xlayerMainnet.id && chain.id !== xlayerTestnet.id && switchChainAsync) {
         try {
-          await switchChainAsync({ chainId: xlayerTestnet.id });
+          await switchChainAsync({ chainId: xlayerMainnet.id });
         } catch {
           throw new Error(
-            "Please approve the network switch to X Layer Testnet (Chain ID 1952) in your wallet."
+            "Please approve the network switch to OKX X Layer in your wallet."
           );
         }
       }
@@ -193,10 +198,12 @@ function SubmitInvoiceContent() {
       }
 
       const bytes32Hash = hashToBytes32(docHash);
-      const registryAddress = CONTRACT_ADDRESSES.xlayerTestnet.assetRegistry;
+      const registryAddress = isMainnet
+        ? (CONTRACT_ADDRESSES.xlayerMainnet.assetRegistry as `0x${string}`)
+        : (CONTRACT_ADDRESSES.xlayerTestnet.assetRegistry as `0x${string}`);
 
       const tx = await writeContractAsync({
-        chainId: xlayerTestnet.id,
+        chainId: targetChain.id,
         address: registryAddress,
         abi: assetRegistryAbi,
         functionName: "submitAsset",
@@ -238,7 +245,10 @@ function SubmitInvoiceContent() {
       const scoreRes = await fetch(`/api/invoices/${currentSubId}/score`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ onchainAssetId: mintedAssetId }),
+        body: JSON.stringify({
+          onchainAssetId: mintedAssetId,
+          network: networkKey,
+        }),
       });
 
       const scoreData = await scoreRes.json();

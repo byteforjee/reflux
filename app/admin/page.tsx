@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient, useChainId } from "wagmi";
 import { ConnectKitButton } from "connectkit";
 import { CONTRACT_ADDRESSES, trancheVaultAbi, mockUsdcAbi } from "@/lib/contracts";
-import { xlayerTestnet } from "@/lib/chain/config";
+import { xlayerTestnet, xlayerMainnet } from "@/lib/chain/config";
 
 const erc20Abi = [
   {
@@ -24,6 +24,13 @@ const erc20Abi = [
       { name: "spender", type: "address" },
     ],
     name: "allowance",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
@@ -54,6 +61,17 @@ const DEFAULT_ADMIN_ALLOWLIST = [
 export default function AdminPage() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
+  const chainId = useChainId();
+
+  const isMainnet = chainId === xlayerMainnet.id;
+  const currentChain = isMainnet ? xlayerMainnet : xlayerTestnet;
+
+  const usdcAddress = isMainnet
+    ? (CONTRACT_ADDRESSES.xlayerMainnet.usdc as `0x${string}`)
+    : (CONTRACT_ADDRESSES.xlayerTestnet.mockUsdc as `0x${string}`);
+  const trancheVaultAddress = isMainnet
+    ? (CONTRACT_ADDRESSES.xlayerMainnet.trancheVault as `0x${string}`)
+    : (CONTRACT_ADDRESSES.xlayerTestnet.trancheVault as `0x${string}`);
 
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,9 +86,6 @@ export default function AdminPage() {
   const { isLoading: isWaitingReceipt, isSuccess: isTxSuccess } = useWaitForTransactionReceipt({
     hash: txHash,
   });
-
-  const mockUsdcAddress = CONTRACT_ADDRESSES.xlayerTestnet.mockUsdc;
-  const trancheVaultAddress = CONTRACT_ADDRESSES.xlayerTestnet.trancheVault;
 
   // Read admin allowlist from public env var + defaults
   const allowlistRaw = process.env.NEXT_PUBLIC_ADMIN_ALLOWLIST || "";
@@ -119,7 +134,7 @@ export default function AdminPage() {
 
   // Read allowance
   const { data: allowanceData, refetch: refetchAllowance } = useReadContract({
-    address: mockUsdcAddress,
+    address: usdcAddress,
     abi: erc20Abi,
     functionName: "allowance",
     args: address && trancheVaultAddress ? [address, trancheVaultAddress] : undefined,
@@ -127,7 +142,7 @@ export default function AdminPage() {
 
   // Read balance
   const { data: balanceData, refetch: refetchBalance } = useReadContract({
-    address: mockUsdcAddress,
+    address: usdcAddress,
     abi: mockUsdcAbi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
@@ -137,13 +152,13 @@ export default function AdminPage() {
   const currentAllowance = allowanceData ? BigInt(allowanceData.toString()) : BigInt(0);
   const needsApproval = currentAllowance < repaymentUnits;
 
-  // 1-Click Faucet for Paying Agent
+  // 1-Click Faucet for Paying Agent (Testnet only)
   const handleClaimAdminFaucet = async () => {
-    if (!address) return;
+    if (!address || isMainnet) return;
     setIsMintingFaucet(true);
     try {
       const tx = await writeContractAsync({
-        address: mockUsdcAddress,
+        address: usdcAddress,
         abi: mockUsdcAbi,
         functionName: "mint",
         args: [address, BigInt(25_000 * 10 ** 6)], // 25,000 mUSDC
@@ -165,11 +180,11 @@ export default function AdminPage() {
     if (!selectedInvoice) return;
     setTxStep("APPROVING");
     writeContract({
-      address: mockUsdcAddress,
+      address: usdcAddress,
       abi: erc20Abi,
       functionName: "approve",
       args: [trancheVaultAddress, repaymentUnits],
-      chainId: xlayerTestnet.id,
+      chainId: currentChain.id,
     });
   };
 
@@ -184,7 +199,7 @@ export default function AdminPage() {
       abi: trancheVaultAbi,
       functionName: "simulateRepayment",
       args: [assetId, repaymentUnits],
-      chainId: xlayerTestnet.id,
+      chainId: currentChain.id,
     });
   };
 
@@ -201,11 +216,12 @@ export default function AdminPage() {
         body: JSON.stringify({
           assetId,
           repaymentAmountUsd: activeRepaymentTotal,
+          network: isMainnet ? "xlayerMainnet" : "xlayerTestnet",
         }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setServerSettleResult({ success: true, txHash: data.data.txHash });
+        setServerSettleResult({ success: true, txHash: data.txHash });
         setTxStep("SUCCESS");
         await fetchInvoices();
       } else {
